@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-/* ⭐ Task card */
+const CATEGORIES = ["ux", "frontend", "backend"];
+
 function TaskCard({ task, reload, members }) {
   const deleteTask = async () => {
     await fetch(`http://localhost:3000/assignments/${task.id}`, {
@@ -12,8 +13,8 @@ function TaskCard({ task, reload, members }) {
   const moveTask = async () => {
     const next =
       task.status === "new"
-        ? "ongoing"
-        : task.status === "ongoing"
+        ? "doing"
+        : task.status === "doing"
         ? "done"
         : "done";
 
@@ -27,6 +28,8 @@ function TaskCard({ task, reload, members }) {
   };
 
   const assign = async (memberId) => {
+    if (!memberId) return;
+
     await fetch(`http://localhost:3000/assignments/${task.id}/assign`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -37,6 +40,16 @@ function TaskCard({ task, reload, members }) {
   };
 
   const assignedMember = members.find((m) => m.id === task.assignedTo);
+  const eligibleMembers = members.filter((m) => m.category === task.category);
+
+  const formatTimestamp = (ts) => {
+    if (!ts) return "-";
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return String(ts);
+    }
+  };
 
   return (
     <div
@@ -44,49 +57,56 @@ function TaskCard({ task, reload, members }) {
         border: "1px solid #ddd",
         padding: 15,
         marginBottom: 15,
-        width: 240,
+        width: 260,
         background: "#fff",
         borderRadius: 10,
         boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
       }}
     >
-      <h4>{task.title}</h4>
-      <p>{task.description}</p>
+      <h4 style={{ marginTop: 0 }}>{task.title}</h4>
+      <p style={{ marginTop: 0 }}>{task.description}</p>
 
+      <small>Category: {task.category}</small>
+      <br />
+      <small>Timestamp: {formatTimestamp(task.timestamp)}</small>
+      <br />
       <small>Status: {task.status}</small>
-      <small>
-  Assigned: {assignedMember ? assignedMember.name : "None"}
-</small>
       <br />
+      <small>Assigned: {assignedMember ? assignedMember.name : "None"}</small>
 
-      <small>
-        Assigned: {assignedMember ? assignedMember.name : "None"}
-      </small>
-
-      <br />
-      <br />
-
-      <select
-        value={task.assignedTo || ""}
-        onChange={(e) => assign(Number(e.target.value))}
-        style={{ width: "100%" }}
-      >
-        <option value="">Assign member</option>
-        {members.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name}
-          </option>
-        ))}
-      </select>
+      {task.status === "new" && (
+        <>
+          <br />
+          <br />
+          <select
+            value={task.assignedTo ?? ""}
+            onChange={(e) => assign(Number(e.target.value))}
+            style={{ width: "100%" }}
+          >
+            <option value="">Assign member</option>
+            {eligibleMembers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
 
       <br />
       <br />
 
-      <button onClick={moveTask} style={{ marginRight: 10 }}>
-        ➡ Move
-      </button>
+      {task.status !== "done" && (
+        <button
+          onClick={moveTask}
+          disabled={task.status === "new" && !task.assignedTo}
+          style={{ marginRight: 10 }}
+        >
+          ➡ Move
+        </button>
+      )}
 
-      <button onClick={deleteTask}>❌ Delete</button>
+      {task.status === "done" && <button onClick={deleteTask}>❌ Delete</button>}
     </div>
   );
 }
@@ -94,10 +114,14 @@ function TaskCard({ task, reload, members }) {
 function App() {
   const [tasks, setTasks] = useState([]);
   const [members, setMembers] = useState([]);
+
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [category, setCategory] = useState(CATEGORIES[0]);
 
-  /* ⭐ Load data */
+  const [memberName, setMemberName] = useState("");
+  const [memberCategory, setMemberCategory] = useState(CATEGORIES[0]);
+
   const loadTasks = () => {
     fetch("http://localhost:3000/assignments")
       .then((res) => res.json())
@@ -115,23 +139,40 @@ function App() {
     loadMembers();
   }, []);
 
-  /* ⭐ Create task */
   const createTask = async () => {
-    if (!title) return;
+    if (!title.trim() || !description.trim()) return;
 
     await fetch("http://localhost:3000/assignments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        title,
-        description,
-        category: "frontend",
+        title: title.trim(),
+        description: description.trim(),
+        category,
       }),
     });
 
     setTitle("");
     setDescription("");
+    setCategory(CATEGORIES[0]);
     loadTasks();
+  };
+
+  const createMember = async () => {
+    if (!memberName.trim()) return;
+
+    await fetch("http://localhost:3000/members", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: memberName.trim(),
+        category: memberCategory,
+      }),
+    });
+
+    setMemberName("");
+    setMemberCategory(CATEGORIES[0]);
+    loadMembers();
   };
 
   return (
@@ -145,36 +186,70 @@ function App() {
     >
       <h1>Scrum board</h1>
 
-      {/* ⭐ Create form */}
-      <h2>Skapa task</h2>
+      <h2>Lägg till medlem</h2>
+      <input
+        placeholder="Namn"
+        value={memberName}
+        onChange={(e) => setMemberName(e.target.value)}
+        style={{ padding: 8, width: 250 }}
+      />
+      <br />
+      <br />
+      <select
+        value={memberCategory}
+        onChange={(e) => setMemberCategory(e.target.value)}
+        style={{ padding: 8, width: 250 }}
+      >
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+      <br />
+      <br />
+      <button onClick={createMember} style={{ padding: "8px 16px" }}>
+        Lägg till medlem
+      </button>
 
+      <hr style={{ margin: "30px 0" }} />
+
+      <h2>Skapa task</h2>
       <input
         placeholder="Titel"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         style={{ padding: 8, width: 250 }}
       />
-
       <br />
       <br />
-
       <input
         placeholder="Beskrivning"
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         style={{ padding: 8, width: 250 }}
       />
-
       <br />
       <br />
-
+      <select
+        value={category}
+        onChange={(e) => setCategory(e.target.value)}
+        style={{ padding: 8, width: 250 }}
+      >
+        {CATEGORIES.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+      <br />
+      <br />
       <button onClick={createTask} style={{ padding: "8px 16px" }}>
         Skapa
       </button>
 
       <hr style={{ margin: "30px 0" }} />
 
-      {/* ⭐ Board */}
       <div style={{ display: "flex", gap: 40 }}>
         <div>
           <h2>New</h2>
@@ -191,9 +266,9 @@ function App() {
         </div>
 
         <div>
-          <h2>Ongoing</h2>
+          <h2>Doing</h2>
           {tasks
-            .filter((t) => t.status === "ongoing")
+            .filter((t) => t.status === "doing")
             .map((task) => (
               <TaskCard
                 key={task.id}
