@@ -1,17 +1,42 @@
 import { useEffect, useState } from "react";
 
-const CATEGORIES = ["ux", "frontend", "backend"];
+type Category = "ux" | "frontend" | "backend";
+type Status = "new" | "doing" | "done";
 
-function TaskCard({ task, reload, members }) {
-  const deleteTask = async () => {
+interface Member {
+  id: number;
+  name: string;
+  category: Category;
+}
+
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+  category: Category;
+  status: Status;
+  assignedTo: number | null;
+  timestamp: string;
+}
+
+interface TaskCardProps {
+  task: Task;
+  reload: () => void;
+  members: Member[];
+}
+
+const CATEGORIES: Category[] = ["ux", "frontend", "backend"];
+
+function TaskCard({ task, reload, members }: TaskCardProps) {
+  const deleteTask = async (): Promise<void> => {
     await fetch(`http://localhost:3000/assignments/${task.id}`, {
       method: "DELETE",
     });
     reload();
   };
 
-  const moveTask = async () => {
-    const next =
+  const moveTask = async (): Promise<void> => {
+    const next: Status =
       task.status === "new"
         ? "doing"
         : task.status === "doing"
@@ -27,7 +52,7 @@ function TaskCard({ task, reload, members }) {
     reload();
   };
 
-  const assign = async (memberId) => {
+  const assign = async (memberId: number): Promise<void> => {
     if (!memberId) return;
 
     await fetch(`http://localhost:3000/assignments/${task.id}/assign`, {
@@ -42,7 +67,7 @@ function TaskCard({ task, reload, members }) {
   const assignedMember = members.find((m) => m.id === task.assignedTo);
   const eligibleMembers = members.filter((m) => m.category === task.category);
 
-  const formatTimestamp = (ts) => {
+  const formatTimestamp = (ts: string): string => {
     if (!ts) return "-";
     try {
       return new Date(ts).toLocaleString();
@@ -112,26 +137,26 @@ function TaskCard({ task, reload, members }) {
 }
 
 function App() {
-  const [tasks, setTasks] = useState([]);
-  const [members, setMembers] = useState([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [title, setTitle] = useState<string>("");
+  const [description, setDescription] = useState<string>("");
+  const [category, setCategory] = useState<Category>(CATEGORIES[0]);
 
-  const [memberName, setMemberName] = useState("");
-  const [memberCategory, setMemberCategory] = useState(CATEGORIES[0]);
+  const [memberName, setMemberName] = useState<string>("");
+  const [memberCategory, setMemberCategory] = useState<Category>(CATEGORIES[0]);
 
-  const loadTasks = () => {
+  const loadTasks = (): void => {
     fetch("http://localhost:3000/assignments")
       .then((res) => res.json())
-      .then((data) => setTasks(data));
+      .then((data: Task[]) => setTasks(data));
   };
 
-  const loadMembers = () => {
+  const loadMembers = (): void => {
     fetch("http://localhost:3000/members")
       .then((res) => res.json())
-      .then((data) => setMembers(data));
+      .then((data: Member[]) => setMembers(data));
   };
 
   useEffect(() => {
@@ -139,7 +164,7 @@ function App() {
     loadMembers();
   }, []);
 
-  const createTask = async () => {
+  const createTask = async (): Promise<void> => {
     if (!title.trim() || !description.trim()) return;
 
     await fetch("http://localhost:3000/assignments", {
@@ -158,7 +183,7 @@ function App() {
     loadTasks();
   };
 
-  const createMember = async () => {
+  const createMember = async (): Promise<void> => {
     if (!memberName.trim()) return;
 
     await fetch("http://localhost:3000/members", {
@@ -197,7 +222,7 @@ function App() {
       <br />
       <select
         value={memberCategory}
-        onChange={(e) => setMemberCategory(e.target.value)}
+        onChange={(e) => setMemberCategory(e.target.value as Category)}
         style={{ padding: 8, width: 250 }}
       >
         {CATEGORIES.map((c) => (
@@ -233,7 +258,7 @@ function App() {
       <br />
       <select
         value={category}
-        onChange={(e) => setCategory(e.target.value)}
+        onChange={(e) => setCategory(e.target.value as Category)}
         style={{ padding: 8, width: 250 }}
       >
         {CATEGORIES.map((c) => (
