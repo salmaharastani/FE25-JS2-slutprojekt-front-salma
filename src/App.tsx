@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-type Category = "ux" | "frontend" | "backend";
+const CATEGORIES = ["ux", "frontend", "backend"] as const;
+type Category = (typeof CATEGORIES)[number];
 type Status = "new" | "doing" | "done";
 
 interface Member {
@@ -24,8 +25,6 @@ interface TaskCardProps {
   reload: () => void;
   members: Member[];
 }
-
-const CATEGORIES: Category[] = ["ux", "frontend", "backend"];
 
 function TaskCard({ task, reload, members }: TaskCardProps) {
   const deleteTask = async (): Promise<void> => {
@@ -142,10 +141,10 @@ function App() {
 
   const [title, setTitle] = useState<string>("");
   const [description, setDescription] = useState<string>("");
-  const [category, setCategory] = useState<Category>(CATEGORIES[0]);
+  const [category, setCategory] = useState<Category>("ux");
 
   const [memberName, setMemberName] = useState<string>("");
-  const [memberCategory, setMemberCategory] = useState<Category>(CATEGORIES[0]);
+  const [memberCategory, setMemberCategory] = useState<Category>("ux");
 
   const loadTasks = (): void => {
     fetch("http://localhost:3000/assignments")
@@ -179,7 +178,7 @@ function App() {
 
     setTitle("");
     setDescription("");
-    setCategory(CATEGORIES[0]);
+    setCategory("ux");
     loadTasks();
   };
 
@@ -196,7 +195,7 @@ function App() {
     });
 
     setMemberName("");
-    setMemberCategory(CATEGORIES[0]);
+    setMemberCategory("ux");
     loadMembers();
   };
 
